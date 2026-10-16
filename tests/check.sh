@@ -112,22 +112,29 @@ live)
 	WORK=$2
 	export XDG_CONFIG_HOME="$WORK/live" XDG_RUNTIME_DIR="$(mktemp -d /tmp/wcpo.XXXXXX)" # short: socket paths max 108 bytes
 	mkdir -p "$XDG_CONFIG_HOME" && chmod 700 "$XDG_RUNTIME_DIR"
-	KWIN_COMPOSE=Q QT_QUICK_BACKEND=software LIBGL_ALWAYS_SOFTWARE=1 \
-		kwin_wayland --virtual --no-lockscreen >"$WORK/kwin.log" 2>&1 &
-	kwin=$!
-	i=0
-	until dbus-send --session --print-reply --dest=org.freedesktop.DBus / \
-		org.freedesktop.DBus.NameHasOwner string:org.kde.KWin 2>/dev/null | grep -q 'boolean true'; do
-		i=$((i + 1))
-		if [ $i -gt 240 ] || ! kill -0 $kwin 2>/dev/null; then
-			cat "$WORK/kwin.log" >&2
-			kill -0 $kwin 2>/dev/null && fail "KWin still not on D-Bus after 120s"
-			wait $kwin || fail "KWin exited with status $?"
-			fail "KWin exited"
-		fi
-		sleep 0.5
-	done
-	ok "headless KWin $(kwin_wayland --version 2>/dev/null | awk '{print $NF}') is running"
+	# start KWin, wait until it owns its D-Bus name. $1: renderer (Q = QPainter,
+	# O2 = OpenGL via Mesa's software rasterizer, there is no GPU in CI)
+	start_kwin() {
+		KWIN_COMPOSE=$1 QT_QUICK_BACKEND=software LIBGL_ALWAYS_SOFTWARE=1 \
+			kwin_wayland --virtual --no-lockscreen >"$WORK/kwin.log" 2>&1 &
+		kwin=$!
+		i=0
+		until dbus-send --session --print-reply --dest=org.freedesktop.DBus / \
+			org.freedesktop.DBus.NameHasOwner string:org.kde.KWin 2>/dev/null | grep -q 'boolean true'; do
+			i=$((i + 1))
+			if ! kill -0 $kwin 2>/dev/null; then
+				status=0; wait $kwin || status=$?
+				cat "$WORK/kwin.log" >&2
+				echo "KWin ($1 renderer) exited with status $status" >&2
+				return 1
+			fi
+			[ $i -le 240 ] || { cat "$WORK/kwin.log" >&2; fail "KWin not on D-Bus after 120s"; }
+			sleep 0.5
+		done
+	}
+	start_kwin Q || start_kwin O2 || fail "KWin did not start with any renderer"
+	version=$(kwin_wayland --version 2>/dev/null || true)
+	ok "headless KWin ${version##* } is running"
 	XDG_CURRENT_DESKTOP=KDE sh "$SCRIPT" >"$WORK/out"
 	cat "$WORK/out"
 	assert_off "$XDG_CONFIG_HOME/kwinrc"

@@ -14,7 +14,7 @@ PATH_EXTRA=
 case $distro in
 arch)
 	image=archlinux:latest
-	install='pacman -Syu --noconfirm --needed kconfig kwin dbus' ;;
+	install='pacman -Syu --noconfirm --needed kconfig kwin dbus mesa' ;;
 debian-12) # Plasma 5.27
 	image=debian:12
 	install="$APT libkf5config-bin kwin-wayland dbus" ;;
@@ -32,7 +32,9 @@ fedora)
 	install='dnf install -y /usr/bin/kwriteconfig6 /usr/bin/kwin_wayland /usr/bin/dbus-run-session /usr/bin/dbus-send' ;;
 opensuse-tumbleweed)
 	image=opensuse/tumbleweed:latest
-	install='zypper -n in kwin6 dbus-1 && { command -v kwriteconfig6 || zypper -n in kf6-kconfig-tools || zypper -n in kf6-kconfig; }' ;;
+	install='zypper -n in kwin6 dbus-1 && { command -v kwriteconfig6 || zypper -n in kf6-kconfig-tools || zypper -n in kf6-kconfig; } &&
+		for p in dbus-1-daemon dbus-1-tools dbus-1-x11; do command -v dbus-run-session || zypper -n in $p || true; done &&
+		command -v dbus-run-session' ;;
 void)
 	image=ghcr.io/void-linux/void-glibc-full:latest
 	install='xbps-install -Syu xbps && xbps-install -Syu && xbps-install -y kf6-kconfig kwin dbus' ;;
