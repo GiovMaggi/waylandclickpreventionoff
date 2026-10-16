@@ -1,0 +1,29 @@
+name: test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  distro:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        distro:
+          - arch
+          - debian-12
+          - debian-13
+          - ubuntu-24.04
+          - ubuntu-latest
+          - fedora
+          - opensuse-tumbleweed
+          - void
+          - alpine
+          - nixos
+          - gentoo
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh tests/ci.sh ${{ matrix.distro }}

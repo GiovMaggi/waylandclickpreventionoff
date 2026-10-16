@@ -1,5 +1,7 @@
 # waylandclickpreventionoff
 
+[![test](https://github.com/GiovMaggi/waylandclickpreventionoff/actions/workflows/test.yml/badge.svg)](https://github.com/GiovMaggi/waylandclickpreventionoff/actions/workflows/test.yml)
+
 One script that turns off KDE Plasma's Wayland protection that blocks legacy X11 apps from
 **reading input in the background** and **sending clicks/keys to the desktop**.
 
@@ -13,20 +15,36 @@ Fixes things like:
 
 ```sh
 git clone https://github.com/GiovMaggi/waylandclickpreventionoff
-cd waylandclickpreventionoff
-sh waylandclickpreventionoff.sh          # turn the protection off
-sh waylandclickpreventionoff.sh status   # show current settings
-sh waylandclickpreventionoff.sh on       # restore KDE defaults
+sh waylandclickpreventionoff/waylandclickpreventionoff.sh
 ```
+
+That's it. There are no options: running it turns the protection off.
 
 Run it as your normal user, **not** with `sudo`. The settings are per user. It applies
 immediately by asking KWin to reload its config. If that fails, log out and back in.
-A timestamped backup of `~/.config/kwinrc` is made every time you run `off`.
+A timestamped backup of `~/.config/kwinrc` is made every time you run it.
 
 ## Supported distros
 
-Anything running KDE Plasma on Wayland: Arch, Manjaro, EndeavourOS, CachyOS, Debian, Ubuntu,
-Kubuntu, KDE neon, Fedora, openSUSE, Void, Gentoo, NixOS, and others.
+Anything running KDE Plasma on Wayland. Every push is tested automatically on GitHub Actions
+against real containers of:
+
+| Distro | Tested |
+|---|---|
+| Arch Linux | plain-sh fallback, kwriteconfig6 + live KWin |
+| Debian 12 (Plasma 5.27) | plain-sh fallback, kwriteconfig5 + live KWin |
+| Debian 13 | plain-sh fallback, kwriteconfig6 + live KWin |
+| Ubuntu 24.04 (Plasma 5.27) | plain-sh fallback, kwriteconfig5 + live KWin |
+| Ubuntu latest | plain-sh fallback, kwriteconfig6 + live KWin |
+| Fedora | plain-sh fallback, kwriteconfig6 + live KWin |
+| openSUSE Tumbleweed | plain-sh fallback, kwriteconfig6 + live KWin |
+| Void Linux | plain-sh fallback, kwriteconfig6 + live KWin |
+| Alpine (busybox sh/awk) | plain-sh fallback, kwriteconfig6 + live KWin |
+| Nix (nixpkgs KDE packages) | plain-sh fallback, kwriteconfig6 + live KWin |
+| Gentoo | plain-sh fallback (building KWin from source takes too long for CI) |
+
+Derivatives (Manjaro, EndeavourOS, CachyOS, Kubuntu, KDE neon, Mint, Nobara, ...) use the same
+packages as their base distro.
 
 The script only needs POSIX `sh` and `awk`, so no packages need to be installed. It uses
 `kwriteconfig6`/`kwriteconfig5` if available and edits the file directly otherwise. KWin is
@@ -76,8 +94,19 @@ To make that permanent, copy OBS's `.desktop` file to `~/.local/share/applicatio
 its `Exec=` line to `Exec=env QT_QPA_PLATFORM=xcb obs`. For the Flatpak version, use
 `flatpak override --user --env=QT_QPA_PLATFORM=xcb com.obsproject.Studio`.
 
+## Undo
+
+Restore one of the `~/.config/kwinrc.bak-*` backups, or delete the three keys above from the
+`[Xwayland]` group of `~/.config/kwinrc`. You can also set *Legacy X11 App Support* back to
+"Only Meta, Control, Alt and Shift keys" in System Settings. Then log out and back in.
+
+## Running the tests yourself
+
+With Docker installed: `sh tests/ci.sh fedora` (or any distro from the table, e.g. `arch`,
+`debian-13`, `nixos`).
+
 ## Security warning
 
 This removes a real protection. With it off, **any** X11 app on your system (games, chat apps,
 launchers, anything running through XWayland) can log everything you type, including
-passwords, and control your mouse and keyboard. Run `sh waylandclickpreventionoff.sh on` to undo.
+passwords, and control your mouse and keyboard.
