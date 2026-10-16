@@ -31,7 +31,7 @@ against real containers of:
 
 | Distro | Tested |
 |---|---|
-| Arch Linux | plain-sh fallback, kwriteconfig6 + live KWin |
+| Arch Linux | plain-sh fallback, kwriteconfig6 (live KWin reload verified on a real Arch desktop: Arch's KWin segfaults in GPU-less CI containers) |
 | Debian 12 (Plasma 5.27) | plain-sh fallback, kwriteconfig5 + live KWin |
 | Debian 13 | plain-sh fallback, kwriteconfig6 + live KWin |
 | Ubuntu 24.04 (Plasma 5.27) | plain-sh fallback, kwriteconfig5 + live KWin |
@@ -39,14 +39,14 @@ against real containers of:
 | Fedora | plain-sh fallback, kwriteconfig6 + live KWin |
 | openSUSE Tumbleweed | plain-sh fallback, kwriteconfig6 + live KWin |
 | Void Linux | plain-sh fallback, kwriteconfig6 + live KWin |
-| Alpine (busybox sh/awk) | plain-sh fallback, kwriteconfig6 + live KWin |
+| Alpine (busybox sh) | plain-sh fallback, kwriteconfig6 + live KWin |
 | Nix (nixpkgs KDE packages) | plain-sh fallback, kwriteconfig6 + live KWin |
 | Gentoo | plain-sh fallback (building KWin from source takes too long for CI) |
 
 Derivatives (Manjaro, EndeavourOS, CachyOS, Kubuntu, KDE neon, Mint, Nobara, ...) use the same
 packages as their base distro.
 
-The script only needs POSIX `sh` and `awk`, so no packages need to be installed. It uses
+The script only needs a POSIX `sh`, so no packages need to be installed. It uses
 `kwriteconfig6`/`kwriteconfig5` if available and edits the file directly otherwise. KWin is
 reloaded through `dbus-send`, `gdbus` or `qdbus`, whichever exists.
 

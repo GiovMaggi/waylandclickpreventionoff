@@ -99,6 +99,10 @@ fallback)
 full)
 	have kwriteconfig6 || have kwriteconfig5 || fail "no kwriteconfig installed"
 	file_tests
+	if [ -n "${NO_LIVE_KWIN:-}" ]; then
+		echo "ALL TESTS PASSED (full, live KWin skipped)"
+		exit 0
+	fi
 	# Nix's dbus has no /etc config; use the one shipped next to the binary
 	conf=$(dirname "$(command -v dbus-run-session)")/../share/dbus-1/session.conf
 	if [ ! -e /etc/dbus-1/session.conf ] && [ -e "$conf" ]; then
