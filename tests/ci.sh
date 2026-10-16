@@ -32,7 +32,7 @@ fedora)
 	install='dnf install -y /usr/bin/kwriteconfig6 /usr/bin/kwin_wayland /usr/bin/dbus-run-session /usr/bin/dbus-send' ;;
 opensuse-tumbleweed)
 	image=opensuse/tumbleweed:latest
-	install='zypper -n in /usr/bin/kwriteconfig6 /usr/bin/kwin_wayland /usr/bin/dbus-run-session /usr/bin/dbus-send' ;;
+	install='zypper -n in kwin6 dbus-1 && { command -v kwriteconfig6 || zypper -n in kf6-kconfig-tools || zypper -n in kf6-kconfig; }' ;;
 void)
 	image=ghcr.io/void-linux/void-glibc-full:latest
 	install='xbps-install -Syu xbps && xbps-install -Syu && xbps-install -y kf6-kconfig kwin dbus' ;;
@@ -51,9 +51,9 @@ esac
 
 name=wcpo-$distro
 docker rm -f "$name" >/dev/null 2>&1 || true
-# SYS_NICE: some distros ship kwin_wayland with that file capability, and exec
-# fails if the container may not grant it
-docker run -d --name "$name" --cap-add SYS_NICE -v "$PWD:/src:ro" "$image" sleep infinity >/dev/null
+# privileged: distros ship kwin_wayland with file capabilities, and exec fails
+# with EPERM if the container may not grant them
+docker run -d --name "$name" --privileged -v "$PWD:/src:ro" "$image" sleep infinity >/dev/null
 trap 'docker rm -f "$name" >/dev/null 2>&1' EXIT
 
 # a normal user (uid 4242 is free on every image); written directly so it works

@@ -99,6 +99,11 @@ fallback)
 full)
 	have kwriteconfig6 || have kwriteconfig5 || fail "no kwriteconfig installed"
 	file_tests
+	# Nix's dbus has no /etc config; use the one shipped next to the binary
+	conf=$(dirname "$(command -v dbus-run-session)")/../share/dbus-1/session.conf
+	if [ ! -e /etc/dbus-1/session.conf ] && [ -e "$conf" ]; then
+		exec dbus-run-session --config-file="$conf" -- sh "$0" live "$WORK"
+	fi
 	exec dbus-run-session -- sh "$0" live "$WORK"
 	;;
 live)
@@ -114,9 +119,11 @@ live)
 	until dbus-send --session --print-reply --dest=org.freedesktop.DBus / \
 		org.freedesktop.DBus.NameHasOwner string:org.kde.KWin 2>/dev/null | grep -q 'boolean true'; do
 		i=$((i + 1))
-		if [ $i -gt 120 ] || ! kill -0 $kwin 2>/dev/null; then
+		if [ $i -gt 240 ] || ! kill -0 $kwin 2>/dev/null; then
 			cat "$WORK/kwin.log" >&2
-			fail "KWin did not start"
+			kill -0 $kwin 2>/dev/null && fail "KWin still not on D-Bus after 120s"
+			wait $kwin || fail "KWin exited with status $?"
+			fail "KWin exited"
 		fi
 		sleep 0.5
 	done
