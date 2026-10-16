@@ -4,8 +4,8 @@
 # keyboard/mouse input in the background and from sending clicks/keys to the desktop.
 #
 # Works on any distro running KDE Plasma (Arch, Debian/Ubuntu, Fedora, openSUSE,
-# Void, NixOS, Alpine, Gentoo, ...). Needs only POSIX sh + awk; uses
-# kwriteconfig6/5 when present. Just run it, there are no options.
+# Void, NixOS, Alpine, Gentoo, ...). Needs only a POSIX sh; uses kwriteconfig6/5
+# when present. Just run it, there are no options.
 
 set -eu
 
@@ -43,27 +43,47 @@ set_key() {
 		"$KWRITE" --file "$KWINRC" --group "$GROUP" --key "$1" "$2"
 		return
 	fi
-	# no kwriteconfig: edit the INI file directly. Blank lines are held back so a
-	# new key lands right after the group's last entry.
+	# no kwriteconfig: edit the INI file directly, in pure sh (minimal systems may
+	# lack awk). Blank lines are held back so a new key lands right after the
+	# group's last entry.
 	mkdir -p "$(dirname "$KWINRC")"
 	[ -f "$KWINRC" ] || : >"$KWINRC"
 	tmp=$(mktemp "$KWINRC.XXXXXX")
-	awk -v grp="[$GROUP]" -v key="$1" -v val="$2" '
-		function put() { if (!done) print key "=" val; done = 1 }
-		function blanks() { for (; held > 0; held--) print "" }
-		/^[ \t]*$/ { held++; next }
-		/^\[/ { if (ingrp) put(); blanks(); ingrp = ($0 == grp); if (ingrp) seen = 1; print; next }
-		ingrp && index($0, key "=") == 1 { blanks(); put(); next }
-		{ blanks(); print }
-		END {
-			if (ingrp) put()
-			if (!seen) { if (NR) print ""; print grp; print key "=" val }
-			blanks()
-		}
-	' "$KWINRC" >"$tmp"
+	ingrp=0 seen=0 done=0 held=0 lines=0
+	{
+		while IFS= read -r line || [ -n "$line" ]; do
+			lines=$((lines + 1))
+			case $line in
+			*[![:space:]]*) ;;
+			*) held=$((held + 1)); continue ;;
+			esac
+			case $line in
+			\[*)
+				[ $ingrp = 0 ] || put_key "$1" "$2"
+				put_blanks
+				if [ "$line" = "[$GROUP]" ]; then ingrp=1 seen=1; else ingrp=0; fi
+				;;
+			"$1="*)
+				put_blanks
+				if [ $ingrp = 1 ]; then put_key "$1" "$2"; continue; fi
+				;;
+			*) put_blanks ;;
+			esac
+			printf '%s\n' "$line"
+		done <"$KWINRC"
+		[ $ingrp = 0 ] || put_key "$1" "$2"
+		if [ $seen = 0 ]; then
+			[ $lines = 0 ] || echo
+			printf '[%s]\n%s=%s\n' "$GROUP" "$1" "$2"
+		fi
+		put_blanks
+	} >"$tmp"
 	cat "$tmp" >"$KWINRC" # keep the original file's permissions
 	rm -f "$tmp"
 }
+
+put_key() { [ $done = 1 ] || printf '%s=%s\n' "$1" "$2"; done=1; }
+put_blanks() { while [ $held -gt 0 ]; do echo; held=$((held - 1)); done; }
 
 # Ask the running KWin to reload its config; no logout needed
 reload_kwin() {

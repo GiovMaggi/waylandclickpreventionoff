@@ -15,12 +15,15 @@ have() { command -v "$1" >/dev/null 2>&1; }
 mkdir -p "$HOME"
 WORK=$(mktemp -d)
 
-# value of key $3 in group $2 of file $1
+# value of key $3 in group $2 of file $1 (pure sh: some images have no awk)
 get() {
-	awk -v grp="[$2]" -v key="$3" '
-		/^\[/ { ingrp = ($0 == grp); next }
-		ingrp && index($0, key "=") == 1 { print substr($0, length(key) + 2); exit }
-	' "$1"
+	ingrp=0
+	while IFS= read -r line; do
+		case $line in
+		\[*) if [ "$line" = "[$2]" ]; then ingrp=1; else ingrp=0; fi ;;
+		"$3="*) if [ $ingrp = 1 ]; then printf '%s\n' "${line#*=}"; return; fi ;;
+		esac
+	done <"$1"
 }
 
 count() { grep -c "^$2=" "$1" || true; }
@@ -71,7 +74,7 @@ file_tests() {
 	cp "$WORK/existing/kwinrc" "$WORK/before"
 	run "$WORK/existing" >"$WORK/out"
 	assert_off "$WORK/existing/kwinrc"
-	cmp -s "$WORK/before" "$WORK/existing/kwinrc" || fail "second run changed the file"
+	[ "$(cat "$WORK/before")" = "$(cat "$WORK/existing/kwinrc")" ] || fail "second run changed the file"
 	[ "$(ls "$WORK/existing" | grep -c '^kwinrc\.bak-')" = 2 ] || fail "expected 2 backups"
 	ok "idempotent, makes a backup on every run"
 

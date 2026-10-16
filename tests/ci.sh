@@ -51,7 +51,9 @@ esac
 
 name=wcpo-$distro
 docker rm -f "$name" >/dev/null 2>&1 || true
-docker run -d --name "$name" -v "$PWD:/src:ro" "$image" sleep infinity >/dev/null
+# SYS_NICE: some distros ship kwin_wayland with that file capability, and exec
+# fails if the container may not grant it
+docker run -d --name "$name" --cap-add SYS_NICE -v "$PWD:/src:ro" "$image" sleep infinity >/dev/null
 trap 'docker rm -f "$name" >/dev/null 2>&1' EXIT
 
 # a normal user (uid 4242 is free on every image); written directly so it works
@@ -66,7 +68,7 @@ fix_machine_id() {
 fix_machine_id
 
 as_user() {
-	docker exec -u 4242:4242 -e HOME=/home/tester \
+	docker exec -u 4242:4242 -e HOME=/home/tester -e LANG=C.UTF-8 \
 		-e PATH="$PATH_EXTRA$(docker exec "$name" sh -c 'echo $PATH')" "$name" "$@"
 }
 
